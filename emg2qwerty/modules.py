@@ -240,6 +240,42 @@ class TDSFullyConnectedBlock(nn.Module):
         return self.layer_norm(x)  # TNC
 
 
+class GRUEncoder(nn.Module):
+    """A multi-layer bidirectional GRU encoder for sequential EMG data.
+
+    Args:
+        num_features (int): Input size for an input of shape (T, N, num_features).
+        hidden_size (int): Number of features in the GRU hidden state. (default: 256)
+        num_layers (int): Number of stacked GRU layers. (default: 2)
+        dropout (float): Dropout between GRU layers (ignored if num_layers=1).
+            (default: 0.2)
+        bidirectional (bool): If True, use a bidirectional GRU. (default: True)
+    """
+
+    def __init__(
+        self,
+        num_features: int,
+        hidden_size: int = 256,
+        num_layers: int = 2,
+        dropout: float = 0.2,
+        bidirectional: bool = True,
+    ) -> None:
+        super().__init__()
+        self.gru = nn.GRU(
+            input_size=num_features,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=False,
+            dropout=dropout if num_layers > 1 else 0.0,
+            bidirectional=bidirectional,
+        )
+        self.out_features = hidden_size * (2 if bidirectional else 1)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        x, _ = self.gru(inputs)  # (T, N, hidden_size * num_directions)
+        return x
+
+
 class TDSConvEncoder(nn.Module):
     """A time depth-separable convolutional encoder composing a sequence
     of `TDSConv2dBlock` and `TDSFullyConnectedBlock` as per
